@@ -1,0 +1,57 @@
+name: One-time Commons photo download proof (no posting)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/commons-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  commons-check:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retrieve public source code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install free image/video dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Fetch four distinct license-filtered real photos and render
+        run: |
+          python video_pipeline.py --source commons --query 'coffee cafe' --min-photos 4 --out output-commons
+      - name: Verify MP4, attribution and no-publication gates
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          root=Path('output-commons')
+          photos=json.loads((root/'sources.json').read_text())
+          report=json.loads((root/'quality.json').read_text())
+          assert len({x['sha256'] for x in photos})>=4
+          assert all(x['license'].lower().strip() in {'cc0','cc0 1.0','public domain','public domain mark 1.0','pdm 1.0'} for x in photos)
+          assert report['publication_authorized'] is False
+          assert report['sales_quality_verified'] is False
+          streams=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(root/'preview.mp4')]))['streams']
+          assert {'video','audio'} <= {s['codec_type'] for s in streams}
+          print('PASS: Commons photos retrieved, technical MP4 rendered. Human review still mandatory.')
+          PY
+      - name: Save review draft to GitHub run artifacts (3 days)
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: commons-photo-test-only
+          path: |
+            output-commons/preview.mp4
+            output-commons/sources.json
+            output-commons/quality.json
+          retention-days: 3
+          if-no-files-found: error
