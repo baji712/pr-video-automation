@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/real-motion-concept.yml
+      - real_motion_concept.py
   workflow_dispatch:
 permissions:
   contents: read
