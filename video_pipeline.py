@@ -25,44 +25,64 @@ def demo_photo(folder):
              'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'requires_human_review':False}]
 
 def commons_photos(query,folder,limit=5):
+    """Fetch only license-tagged Commons photos; vary searches rather than silently using demo images."""
     import requests
     session=requests.Session()
-    session.headers.update({'User-Agent':'PRVideoTechnicalPreview/1.0 (nonpublishing)'})
-    res=session.get('https://commons.wikimedia.org/w/api.php',
-      params={'action':'query','format':'json','formatversion':'2','generator':'search',
-              'gsrsearch':'filetype:bitmap '+query,'gsrnamespace':6,'gsrlimit':50,
-              'prop':'imageinfo','iiprop':'url|size|mime|extmetadata','iiurlwidth':1100},
-      timeout=30)
-    res.raise_for_status()
+    session.headers.update({'User-Agent':'PRVideoTechnicalPreview/1.2 (nonpublishing research; contact via GitHub repository)'})
+    queries=[query,'coffee','espresso','barista','cafe','roasted coffee beans','latte art']
     output=[]
-    for page in res.json().get('query',{}).get('pages',[]):
-        info=(page.get('imageinfo') or [{}])[0]
-        meta=info.get('extmetadata') or {}
-        license_name=(meta.get('LicenseShortName') or {}).get('value','')
-        if not permitted(license_name) or info.get('mime') not in ('image/jpeg','image/png'): continue
-        if min(info.get('width',0),info.get('height',0))<600: continue
-        url=info.get('thumburl') or info.get('url') or ''
-        parsed=urlparse(url)
-        if parsed.scheme!='https' or parsed.hostname!='upload.wikimedia.org':continue
-        try:
-            response=session.get(url,timeout=40,stream=True)
-            response.raise_for_status()
-            buf=bytearray()
-            for part in response.iter_content(chunk_size=65536):
-                buf.extend(part)
-                if len(buf)>12_000_000:raise ValueError('image exceeds size limit')
-            img=Image.open(io.BytesIO(buf)).convert('RGB')
-            if min(img.size)<500:continue
-            p=folder/('photo_%02d.jpg'%(len(output)+1))
-            img.save(p,quality=91)
-            author=(meta.get('Artist') or {}).get('value','Unknown')
-            author=unescape(re.sub('<[^>]*>','',author)).strip()[:200]
-            output.append({'file':p.name,'author':author,'license':license_name,
-              'source_page':'https://commons.wikimedia.org/wiki/'+quote(page.get('title','').replace(' ','_'),safe=':/_'),
-              'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'requires_human_review':True})
-            if len(output)>=limit:break
-        except Exception as e:
-            print('Skip unsuitable Wikimedia file:',str(e)[:100])
+    seen=set()
+    checked=0
+    for term in dict.fromkeys(queries):
+        for offset in (0,50):
+            try:
+                res=session.get('https://commons.wikimedia.org/w/api.php',
+                  params={'action':'query','format':'json','formatversion':'2',
+                          'generator':'search','gsrsearch':term,'gsrnamespace':6,
+                          'gsrlimit':50,'gsroffset':offset,
+                          'prop':'imageinfo','iiprop':'url|size|mime|extmetadata','iiurlwidth':1100},timeout=30)
+                res.raise_for_status()
+                pages=res.json().get('query',{}).get('pages',[])
+            except requests.RequestException as exc:
+                print('Commons API search failed:',type(exc).__name__,str(exc)[:100])
+                continue
+            print('Commons candidates:',term,'offset',offset,'=',len(pages))
+            for page in pages:
+                info=(page.get('imageinfo') or [{}])[0]
+                meta=info.get('extmetadata') or {}
+                name=unescape(re.sub('<[^>]*>','',(meta.get('LicenseShortName') or {}).get('value',''))).strip()
+                checked+=1
+                if not permitted(name) or info.get('mime') not in ('image/jpeg','image/png'):continue
+                if min(info.get('width',0),info.get('height',0))<600:continue
+                url=info.get('thumburl') or info.get('url') or ''
+                parsed=urlparse(url)
+                if parsed.scheme!='https' or parsed.hostname!='upload.wikimedia.org' or url in seen:continue
+                try:
+                    response=session.get(url,timeout=30,stream=True)
+                    response.raise_for_status()
+                    buf=bytearray()
+                    for part in response.iter_content(chunk_size=65536):
+                        buf.extend(part)
+                        if len(buf)>12_000_000:raise ValueError('image exceeds size limit')
+                    img=Image.open(io.BytesIO(buf)).convert('RGB')
+                    if min(img.size)<500:continue
+                    p=folder/('photo_%02d.jpg'%(len(output)+1))
+                    img.save(p,quality=90)
+                    digest=hashlib.sha256(p.read_bytes()).hexdigest()
+                    if digest in {x['sha256'] for x in output}:
+                        p.unlink();continue
+                    seen.add(url)
+                    author=(meta.get('Artist') or {}).get('value','Unknown')
+                    author=unescape(re.sub('<[^>]*>','',author)).strip()[:200]
+                    output.append({'file':p.name,'author':author,'license':name,
+                      'source_page':'https://commons.wikimedia.org/wiki/'+quote(page.get('title','').replace(' ','_'),safe=':/_'),
+                      'sha256':digest,'requires_human_review':True})
+                    if len(output)>=limit:
+                        print('Commons photos accepted:',len(output),'of',checked,'metadata entries checked')
+                        return output
+                except (requests.RequestException,ValueError,OSError) as exc:
+                    print('Skip Commons photo:',type(exc).__name__,str(exc)[:100])
+    print('Commons photos accepted:',len(output),'of',checked,'metadata entries checked')
     return output
 
 def make_audio(path,duration):
