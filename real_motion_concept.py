@@ -21,7 +21,8 @@ if license_name.lower().strip() not in ('cc-by-2.0','cc by 2.0','attribution 2.0
     raise RuntimeError('License not verified: '+license_name)
 if inf.get('mime')!='video/webm':raise RuntimeError('unexpected source MIME')
 source=ROOT/'macro_espresso_source.webm'
-clean_url=urlunsplit(urlsplit(inf['url'])._replace(query='',fragment=''))\nwith requests.get(clean_url,stream=True,timeout=55,headers={'User-Agent':'Mozilla/5.0 (nonpublishing concept render)'}) as rr:
+clean_url=urlunsplit(urlsplit(inf['url'])._replace(query='',fragment=''))
+with requests.get(clean_url,stream=True,timeout=55,headers={'User-Agent':'Mozilla/5.0 (nonpublishing concept render)'}) as rr:
     rr.raise_for_status()
     count=0
     with source.open('wb') as fh:
