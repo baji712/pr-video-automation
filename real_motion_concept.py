@@ -4,7 +4,7 @@ No paid provider, no publishing, no third-party music.
 """
 import json,os,subprocess,requests
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote,urlsplit,urlunsplit
 from PIL import Image,ImageFont,ImageDraw,ImageFilter
 import numpy as np,wave,math
 
@@ -21,7 +21,7 @@ if license_name.lower().strip() not in ('cc-by-2.0','cc by 2.0','attribution 2.0
     raise RuntimeError('License not verified: '+license_name)
 if inf.get('mime')!='video/webm':raise RuntimeError('unexpected source MIME')
 source=ROOT/'macro_espresso_source.webm'
-with requests.get(inf['url'],stream=True,timeout=55) as rr:
+clean_url=urlunsplit(urlsplit(inf['url'])._replace(query='',fragment=''))\nwith requests.get(clean_url,stream=True,timeout=55,headers={'User-Agent':'Mozilla/5.0 (nonpublishing concept render)'}) as rr:
     rr.raise_for_status()
     count=0
     with source.open('wb') as fh:
