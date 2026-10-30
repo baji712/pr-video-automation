@@ -1,0 +1,33 @@
+name: Render real motion coffee concept (no posting)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/real-motion-concept.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          python -m pip install --disable-pip-version-check Pillow requests numpy
+      - run: python real_motion_concept.py
+      - name: Upload unposted concept, license and credits
+        uses: actions/upload-artifact@v4
+        with:
+          name: coffee-real-motion-concept
+          path: |
+            output-selling-concept/roast_ritual_concept.mp4
+            output-selling-concept/credits_and_rights.json
+            output-selling-concept/ATTRIBUTION.txt
+          retention-days: 7
+          if-no-files-found: error
