@@ -1,0 +1,72 @@
+name: Licensed long-video to Shorts proof (no publishing)
+on:
+  push:
+    branches: [main]
+    paths:
+      - clipper/**
+      - tests/test_clipper.py
+      - .github/workflows/owner-clipper-proof.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  proof:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Free packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          python -m pip install --disable-pip-version-check 'numpy>=1.26,<3' 'Pillow>=10,<14' requests
+      - name: Rights and selection tests
+        run: python -m unittest discover -s tests -p test_clipper.py -v
+      - name: Download CC BY demo video from Wikimedia
+        run: |
+          python - <<'PY'
+          import requests
+          url='https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.480p.vp9.webm'
+          r=requests.get(url,timeout=70,stream=True,headers={'User-Agent':'RightsGatedClipperTest/1.0'})
+          r.raise_for_status()
+          n=0
+          with open('licensed_source.webm','wb') as f:
+            for chunk in r.iter_content(65536):
+              n+=len(chunk)
+              if n>65_000_000:raise ValueError('video too large')
+              f.write(chunk)
+          assert n>500000
+          print('Licensed source bytes',n)
+          PY
+      - name: Automatically select and render video highlights
+        run: |
+          python clipper/shorts.py --input licensed_source.webm --rights clipper/demo_rights.json --out clipper-output --count 5 --title 'エスプレッソ抽出の瞬間' --headlines 'この一滴、見逃せない。|濃厚なクレマ。|香りが立ちのぼる。|一杯へのこだわり。|思わず飲みたくなる。'
+      - name: Verify video and no-publishing safety
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          a=Path('clipper-output')
+          assert (a/'shorts_review_draft.mp4').stat().st_size>100000
+          q=json.loads((a/'quality.json').read_text())
+          assert q['automatic_publication'] is False
+          assert q['sales_quality_verified'] is False
+          assert len(q['segments'])==5
+          p=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-of','json',str(a/'shorts_review_draft.mp4')]))
+          assert {'video','audio'}<=set(x['codec_type'] for x in p['streams'])
+          assert any(x.get('width')==720 and x.get('height')==1280 for x in p['streams'])
+          print('Pass: 5 motion-ranked clips, source credited; no commercial release.')
+          PY
+      - name: Store private review draft for 3 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: rights-gated-clipped-review
+          path: |
+            clipper-output/shorts_review_draft.mp4
+            clipper-output/quality.json
+            clipper-output/ATTRIBUTION.txt
+          retention-days: 3
+          if-no-files-found: error
