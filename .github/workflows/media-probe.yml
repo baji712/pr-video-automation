@@ -1,0 +1,48 @@
+name: Check licensed stock video downloads (no publishing)
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/media-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe public footage hosts and known license pages
+        run: |
+          python - <<'PY'
+          import requests,re,html
+          urls=[
+            'https://pixabay.com/videos/cup-of-coffee-hot-beverage-pouring-34/',
+            'https://pixabay.com/videos/coffee-pouring-serving-breakfast-36703/',
+            'https://pixabay.com/videos/cups-coffee-pouring-espresso-262184/',
+            'https://www.pexels.com/video/barista-hands-preparing-coffee-6683371/',
+            'https://www.pexels.com/video/espresso-pouring-out-from-coffee-machine-6715426/',
+            'https://cdn.pixabay.com/video/2015/08/07/34-135675569_large.mp4',
+            'https://media.githubusercontent.com/media',
+            'https://commons.wikimedia.org/wiki/Special:Redirect/file/Latte_Coffee_making.webm',
+            'https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.480p.vp9.webm',
+            'https://upload.wikimedia.org/wikipedia/commons/6/66/Macro_Espresso_Process.webm',
+            'https://upload.wikimedia.org/wikipedia/commons/4/49/Latte_Coffee_making.webm',
+          ]
+          for url in urls:
+            try:
+              rr=requests.get(url,headers={'User-Agent':'Mozilla/5.0 (License compliance testing)','Range':'bytes=0-50000'},timeout=14,stream=True)
+              typ=rr.headers.get('content-type','')
+              buf=b''
+              for chunk in rr.iter_content(65536):
+                buf+=chunk
+                if len(buf)>=60000:break
+              rr.close()
+              st=rr.status_code
+              hits=[]
+              if 'html' in typ:
+                body=buf.decode(errors='ignore')
+                hits=list(dict.fromkeys(html.unescape(x).replace('\\u002F','/').replace('\\/','/')[:170] for x in re.findall(r'(?:https?:)?\\?/\\?/[^"\\\\\s]+?\\.(?:mp4|webm)(?:\\?[^"\\\\\s]*)?',body)))[:8]
+              print('RESULT',st,typ,'bytes',len(buf),'url',url,'redirect',rr.url.split('?')[0],'found',hits,flush=True)
+            except Exception as e:
+              print('ERR',url,type(e).__name__,str(e)[:80],flush=True)
+          PY
