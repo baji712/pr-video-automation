@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - .github/workflows/commons-proof.yml
+      - video_pipeline.py
+      - research/viral_food_benchmarks_2026-10.json
   workflow_dispatch:
 
 permissions:
