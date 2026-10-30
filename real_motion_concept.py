@@ -22,7 +22,8 @@ if license_name.lower().strip() not in ('cc-by-2.0','cc by 2.0','attribution 2.0
 if inf.get('mime')!='video/webm':raise RuntimeError('unexpected source MIME')
 source=ROOT/'macro_espresso_source.webm'
 clean_url=urlunsplit(urlsplit(inf['url'])._replace(query='',fragment=''))
-with requests.get(clean_url,stream=True,timeout=55,headers={'User-Agent':'Mozilla/5.0 (nonpublishing concept render)'}) as rr:
+transcode_url='https://upload.wikimedia.org/wikipedia/commons/transcoded/6/66/Macro_Espresso_Process.webm/Macro_Espresso_Process.webm.480p.vp9.webm'
+with requests.get(transcode_url,stream=True,timeout=55,headers={'User-Agent':'Mozilla/5.0 (nonpublishing concept render)'}) as rr:
     rr.raise_for_status()
     count=0
     with source.open('wb') as fh:
@@ -34,7 +35,7 @@ with requests.get(clean_url,stream=True,timeout=55,headers={'User-Agent':'Mozill
 if source.stat().st_size<500000:raise RuntimeError('source video empty')
 probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',str(source)]))
 duration=float(probe['format']['duration'])
-if duration<22:raise RuntimeError('insufficient motion footage')
+if duration<31.5:raise RuntimeError('insufficient motion footage')
 # 6 genuine motion shots from distinct moments of one licensed original film.
 shots=[(1.0,2.0),(5.6,1.8),(10.0,1.9),(17.0,2.0),(22.0,2.2),(29.2,2.1)]
 if max(a+b for a,b in shots)>duration:raise RuntimeError('source too short')
