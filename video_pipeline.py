@@ -106,10 +106,11 @@ def fit(image,zoom):
     img=image.resize((int(image.width*ratio)+2,int(image.height*ratio)+2),Image.Resampling.BICUBIC)
     return ImageOps.fit(img,SIZE,Image.Resampling.BICUBIC)
 
-def render(paths,folder,duration=12.0):
+def render(paths,folder,duration=10.0):
     photos=[Image.open(p).convert('RGB') for p in paths]
-    starts=[fit(p,1) for p in photos]
-    ends=[fit(p,1.10) for p in photos]
+    # Crop variety and a slightly more energetic pace, not a claim of guaranteed virality.
+    starts=[fit(p,1.03 if i%2 else 1) for i,p in enumerate(photos)]
+    ends=[fit(p,1.13 if i%2 else 1.09) for i,p in enumerate(photos)]
     work=folder/'silent.mp4'
     cmd=['ffmpeg','-hide_banner','-loglevel','error','-y','-f','rawvideo','-pix_fmt','rgb24',
          '-s','%dx%d'%SIZE,'-r',str(FPS),'-i','pipe:0','-c:v','libx264',
@@ -126,12 +127,12 @@ def render(paths,folder,duration=12.0):
             frame=frame.convert('RGBA')
             shade=Image.new('RGBA',SIZE,(0,0,0,0));d=ImageDraw.Draw(shade)
             d.rectangle((0,0,SIZE[0],105),fill=(8,11,12,150))
-            d.text((28,32),'COFFEE / SHORT PR STUDY',
+            d.text((28,32),'COFFEE / 10 SEC FOOD STUDY',
                    font=ImageFont.truetype(FONT,27),fill='white')
             d.rounded_rectangle((20,SIZE[1]-162,SIZE[0]-20,SIZE[1]-24),
                                 radius=18,fill=(8,11,12,165))
-            lines=['その一杯を、','いつもの休憩に。','コーヒーのある時間。','次のひと休みに。']
-            d.text((46,SIZE[1]-140),lines[min(num,3)],
+            lines=['この一杯、気になる？','一口目の香り。','ゆっくり、でも濃く。','次のひと休みに。']
+            d.text((46,SIZE[1]-140),('最初の1秒で惹きつける。' if t < 1 else lines[min(num,3)]),
                    font=ImageFont.truetype(FONT,38),fill='white')
             d.text((46,SIZE[1]-75),'DEMO / 架空の店舗・広告ではありません',
                    font=ImageFont.truetype(FONT,17),fill=(245,230,215))
@@ -173,6 +174,8 @@ def main():
     report={'technical_render_passed':True,'sales_quality_verified':False,
             'publication_authorized':False,'human_review_required':True,
             'source_count':len(items),'additional_charge_jpy':0,
+            'creative_reference':'research/viral_food_benchmarks_2026-10.json',
+            'creative_hypothesis':'Immediate real food imagery, 1s hook, short pace, concrete text; no promise of 1M views',
             'generated_utc':datetime.now(timezone.utc).isoformat(),
             'limitation':'Animated still photos, not real motion footage. No business endorsement.'}
     (folder/'quality.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
