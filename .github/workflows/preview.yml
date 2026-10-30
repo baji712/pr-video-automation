@@ -1,0 +1,75 @@
+name: Validate video pipeline (no publishing)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Choose offline technical demo or public-domain candidate images'
+        required: true
+        type: choice
+        default: demo
+        options: [demo, commons]
+  schedule:
+    - cron: '17 1 * * 1' # Monday 10:17 JST, gated by ENABLE_SCHEDULED_RENDER
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nonpublishing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: ${{ github.event.repository.private == false && (github.event_name != 'schedule' || vars.ENABLE_SCHEDULED_RENDER == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install free dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-cjk
+          python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Render non-publishing preview
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_SOURCE: ${{ inputs.source }}
+        run: |
+          if [ "$EVENT" = 'schedule' ] || [ "$INPUT_SOURCE" = 'commons' ]; then
+            python video_pipeline.py --source commons --query 'coffee cafe' --min-photos 4
+          else
+            python video_pipeline.py --source demo
+          fi
+      - name: Verify resulting video and rights report
+        run: |
+          test -s output/preview.mp4
+          test -s output/sources.json
+          test -s output/quality.json
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          report=json.loads(Path('output/quality.json').read_text())
+          assert report['publication_authorized'] is False
+          assert report['sales_quality_verified'] is False
+          stream=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json','output/preview.mp4']))
+          assert {'video','audio'} <= {s['codec_type'] for s in stream['streams']}
+          assert any(s.get('width')==640 and s.get('height')==1138 for s in stream['streams'])
+          print('Technical preview accepted; publication NOT authorized.')
+          PY
+      - name: Archive draft for human review
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-demo-for-human-review
+          path: |
+            output/preview.mp4
+            output/sources.json
+            output/quality.json
+          retention-days: 3
+          if-no-files-found: error
