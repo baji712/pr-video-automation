@@ -1,0 +1,38 @@
+name: Probe licensed motion footage URLs (no publishing)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/asset-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect public Mixkit preview asset URLs
+        run: |
+          python - <<'PY'
+          import requests
+          clips=[
+            ('milk-ice',796,'a-barista-preparing-coffee-with-milk-and-ice'),
+            ('pouring',43941,'pouring-coffee-in-a-cup'),
+            ('grounds',4984,'coffee-powder-being-poured-on-the-coffee-maker-filter'),
+            ('filter',816,'water-poured-into-a-coffee-filter'),
+            ('machine',3578,'coffee-maker-making-coffee'),
+            ('serving',3574,'serving-coffee-in-a-cup-at-a-coffee-shop'),
+            ('steam',808,'steaming-mug'),
+            ('latte',810,'latte-art'),
+            ('stir',43264,'person-stirring-latte-art-in-a-cup'),
+          ]
+          for title,ident,slug in clips:
+            url=f'https://assets.mixkit.co/videos/preview/mixkit-{slug}-{ident}-large.mp4'
+            try:
+              r=requests.get(url,headers={'Range':'bytes=0-1023','User-Agent':'Mozilla/5.0'},timeout=15,stream=True,allow_redirects=True)
+              print(title,ident,r.status_code,r.headers.get('Content-Type'),r.headers.get('Content-Length'),r.url.split('?')[0],flush=True)
+              r.close()
+            except Exception as e:
+              print(title,ident,type(e).__name__,str(e)[:100],flush=True)
+          PY
