@@ -1,0 +1,55 @@
+{
+  "snapshot_date": "2026-10-26",
+  "methodology": "Publicly listed view counts (Digital Creators). Titles and metadata reviewed; no claim of shot-by-shot video access. Editing hypotheses are inspired by topic/format and YouTube Shorts creator guidance, not reverse-engineered proven causal factors.",
+  "inclusion_rule": "Use >=3 actual food-related videos independently reported at >=1,000,000 views before selecting a creative treatment; show views, date and source.",
+  "sources": [
+    {
+      "title": "カリッカリのチキン南蛮",
+      "channel": "Kurashiru [クラシル]",
+      "views": 11754074,
+      "seconds": 54,
+      "date": "2025-08-11",
+      "data_source": "https://digitalcreators.jp/channel/ja/UCE40kwov-UdhGikwAowjAAQ/popular-videos/",
+      "hook_hypothesis": "Specific crunchy texture creates an immediate sensory expectation."
+    },
+    {
+      "title": "ベチャっとしないチャーハン作りの絶対条件",
+      "channel": "Kurashiru [クラシル]",
+      "views": 10528163,
+      "seconds": 51,
+      "date": "2026-08-12",
+      "data_source": "https://digitalcreators.jp/channel/ja/UCE40kwov-UdhGikwAowjAAQ/popular-videos/",
+      "hook_hypothesis": "A clear problem/solution gap creates curiosity."
+    },
+    {
+      "title": "お店が出来ちゃう？とろっとろのカレーうどん",
+      "channel": "Kurashiru [クラシル]",
+      "views": 8941233,
+      "seconds": 30,
+      "date": "2023-02-19",
+      "data_source": "https://digitalcreators.jp/channel/ja/UCE40kwov-UdhGikwAowjAAQ/popular-videos/",
+      "hook_hypothesis": "A visually concrete texture plus an intriguing question."
+    },
+    {
+      "title": "中華 大吉２（新潟県）",
+      "channel": "ヒューマングルメンタリー オモウマい店【公式】",
+      "views": 7410404,
+      "seconds": 41,
+      "date": "2024-04-26",
+      "data_source": "https://digitalcreators.jp/channel/ja/UCDtbqtsrrz56EmgPy51x2Yg/popular-videos/",
+      "watch_url": "https://www.youtube.com/watch?v=RDRx_-QaXEQ",
+      "hook_hypothesis": "Real restaurant context and distinctive human/food story."
+    }
+  ],
+  "youtube_creator_guidance": "https://blog.youtube/creator-and-artist-stories/youtube-shorts-deep-dive/",
+  "creative_rules": [
+    "Use an appetizing real photo on frame 1; do not show a generic logo first.",
+    "Display a short concrete visual hook in <=1 second.",
+    "Use cut pacing (~1–2s) to avoid a long static slideshow.",
+    "Show variety and/or a progression; final shot has satisfying close-up.",
+    "Never borrow the original creator's footage, audio, thumbnails, or copy text.",
+    "Every photo must have documented license metadata; no client endorsement implied.",
+    "Real cooking motion footage is necessary before claiming competitive commercial production quality."
+  ],
+  "disclaimer": "Viral views are not guaranteed; public aggregate counts can change. These are design hypotheses rather than demonstrated causation."
+}
